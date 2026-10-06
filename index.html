@@ -84,7 +84,7 @@ legend{font-weight:700;font-size:1.05rem;padding:0;margin-bottom:8px}
 
 <script>
 // Paste your Apps Script Web App URL (ends with /exec)
-const API_URL = "https://script.google.com/macros/s/AKfycbxErB8eiv9mn_HAN01dNZyb6ftKACD3fSEGdBKvFQWwgJcUvV28gsrZUAxuTcJOeubh/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwiMX7sp_jtUnYzwsWwvhLP7_y0ia4ZwscM-VNtlcBLVJCInC1A81z1_Ue-jEnwJm64/exec";
 
 const PROG_COURSES = ["DBMS","PDSA","MAD 1","MAD 2","Java","System Commands (SC)","MAD 1 Project","MAD 2 Project"];
 const DS_COURSES = ["MLF","BDM","MLT","MLP","TDS","DL GenAI","MLP Project","DL GenAI Project","BDM Project","Business Analytics"];
@@ -98,6 +98,7 @@ const SLOTS = (() => {
 })();
 
 const $ = id => document.getElementById(id);
+const loadedAt = Date.now();
 const selectedCourses = new Set();
 const escapeId = s => s.replace(/[^a-zA-Z0-9]/g, "_");
 const chipHTML = (t, extra = "") => `<button type="button" class="chip ${extra}" aria-pressed="false">${t}</button>`;
@@ -186,12 +187,14 @@ $("form").addEventListener("submit", async e => {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 20000);
   try {
-    // no-cors: Apps Script redirects break CORS; the response is opaque, so success = request sent
-    await fetch(API_URL, {
-      method: "POST", mode: "no-cors", signal: ctrl.signal,
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ name, email, preferences })
+    // text/plain keeps this a simple request (no preflight); Apps Script sends CORS headers, so we can read the result
+    const res = await fetch(API_URL, {
+      method: "POST", signal: ctrl.signal,
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ name, email, preferences, company: $("company").value, elapsed: Date.now() - loadedAt })
     });
+    const out = await res.json();
+    if (out.status !== "success") throw new Error(out.message || "Server rejected the request");
     btn.textContent = "Submitted!"; btn.classList.add("ok");
     setStatus("Done! Your preferences are on the master schedule. Resubmitting a course updates your earlier answer.", "good");
     setTimeout(() => { btn.disabled = false; btn.textContent = "Submit preferences"; btn.classList.remove("ok"); }, 4000);
